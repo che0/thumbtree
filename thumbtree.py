@@ -25,9 +25,9 @@ class TreeThumbnailer(object):
 		ext = os.path.splitext(source_file)[1].lower()
 		if ext == '':
 			print 'unknown filetype: %s' % source_file
-		elif ext in ('jpg', 'jpeg')
+		elif ext in ('.jpg', '.jpeg'):
 			self.make_thumbnail(source_file, target_file)
-		elif ext in ('xcf', 'cr2'):
+		elif ext in ('.xcf', '.cr2'):
 			print 'skipping %s' % target_file
 			subprocess.check_call(['touch', target_file])
 		else:
@@ -143,7 +143,7 @@ def main():
 	max_dim = (1920, 1200)
 	quality = 88
 	
-	tt = TreeThumbnailer(max_dim)
+	tt = TreeThumbnailer(max_dim, quality)
 	tt.thumbnail_tree(sys.argv[1], sys.argv[2])
 
 if __name__ == '__main__':
