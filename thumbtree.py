@@ -5,8 +5,9 @@ import os, stat, sys, subprocess
 class TreeThumbnailer(object):
 	""" Class for creating thumbnail tree from a photo tree. """
 	
-	def __init__(self, max_dimensions):
+	def __init__(self, max_dimensions, quality):
 		self.max_dimensions = max_dimensions
+		self.quality = quality
 	
 	@staticmethod
 	def list_dir(path):
@@ -21,13 +22,26 @@ class TreeThumbnailer(object):
 		return out
 	
 	def refresh_file(self, source_file, target_file):
+		ext = os.path.splitext(source_file)[1].lower()
+		if ext == '':
+			print 'unknown filetype: %s' % source_file
+		elif ext in ('jpg', 'jpeg')
+			self.make_thumbnail(source_file, target_file)
+		elif ext in ('xcf', 'cr2'):
+			print 'skipping %s' % target_file
+			subprocess.check_call(['touch', target_file])
+		else:
+			raise Exception('unknown filetype: %s %s' % (ext, source_file))
+	
+	def make_thumbnail(self, source_file, target_file):
 		""" Refresh thumbnail image. Takes paths as argument. Source exists, target does not. """
-		print 'refreshing %s' % target_file
+		print 'thumbnailing %s' % target_file
 		call_argv = [
 			'convert',
 			'-size', '%sx%s' % self.max_dimensions, # set max dimensions for reading
 			source_file,
 			'-resize', '%sx%s>' % self.max_dimensions, # fit to this size
+			'-quality', str(self.quality), # output quality
 			target_file,
 		]
 		subprocess.check_call(call_argv)
@@ -125,7 +139,10 @@ class TreeThumbnailer(object):
 
 def main():
 	print "%s -> %s" % (sys.argv[1], sys.argv[2])
+	
 	max_dim = (1920, 1200)
+	quality = 88
+	
 	tt = TreeThumbnailer(max_dim)
 	tt.thumbnail_tree(sys.argv[1], sys.argv[2])
 
