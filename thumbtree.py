@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, stat, sys, subprocess
+import os, stat, sys, subprocess, shutil
 
 class TreeThumbnailer(object):
 	""" Class for creating thumbnail tree from a photo tree. """
@@ -22,14 +22,21 @@ class TreeThumbnailer(object):
 		return out
 	
 	def refresh_file(self, source_file, target_file):
+		""" Refresh file thumbnail """
+		image_exts = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
+		copy_exts = ('', '.mov', '.avi', '.pto', '.txt')
+		ignored_exts = ('.xcf', '.cr2', '.zip', '.bz2', '.xcf')
+		ignored_files = ('Thumbs.db', '.DS_Store')
+		
 		ext = os.path.splitext(source_file)[1].lower()
-		if ext == '':
-			print 'unknown filetype: %s' % source_file
-		elif ext in ('.jpg', '.jpeg'):
+		if ext in image_exts:
 			self.make_thumbnail(source_file, target_file)
-		elif ext in ('.xcf', '.cr2'):
+		elif ext in ignored_exts or os.path.basename(source_file) in ignored_files:
 			print 'skipping %s' % target_file
 			subprocess.check_call(['touch', target_file])
+		elif ext in copy_exts:
+			print 'copying %s' % target_file
+			shutil.copyfile(source_file, target_file)
 		else:
 			raise Exception('unknown filetype: %s %s' % (ext, source_file))
 	
@@ -122,6 +129,18 @@ class TreeThumbnailer(object):
 			else:
 				# weird stuff in our tree
 				print "weird item in source tree: %s" % sitem_path
+		# end of what's in source
+		
+		# go through remaining stuff in destination
+		for item_name in target:
+			titem_mode, _ = target[item_name]
+			titem_path = os.path.join(target_path, item_name)
+			if stat.S_ISDIR(titem_mode):
+				print "clearing removed directory: %s" % titem_path
+				shutil.rmtree(titem_path)
+			else:
+				print "clearing removed item: %s" % titem_path
+				os.unlink(titem_path)
 	
 	def thumbnail_tree(self, source_path, dest_path):
 		""" Make dest_path thumbnail tree of source_path. """
