@@ -1,0 +1,8 @@
+thumbtree.py is a Python script that takes a directory tree with pictures
+and creates/updates a second tree to contain the same structure, but with
+all photos scaled down to 1920x1200 and reduced quality.
+
+It's useful if you have an archive of pictures you want to view on mobile
+device with limited storage.
+
+The script uses ImageMagick's convert script to do the hard work.
