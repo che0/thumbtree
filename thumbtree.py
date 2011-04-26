@@ -24,7 +24,7 @@ class TreeThumbnailer(object):
 	def refresh_file(self, source_file, target_file):
 		""" Refresh file thumbnail """
 		image_exts = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
-		copy_exts = ('', '.mov', '.avi', '.pto', '.txt')
+		copy_exts = ('', '.mov', '.avi', '.pto', '.txt', '.mp4')
 		ignored_exts = ('.xcf', '.cr2', '.zip', '.bz2', '.xcf')
 		ignored_files = ('Thumbs.db', '.DS_Store')
 		
