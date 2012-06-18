@@ -17,7 +17,7 @@ class TreeThumbnailer(object):
 		"""
 		out = {}
 		for f in os.listdir(path):
-			st = os.stat(os.path.join(path, f))
+			st = os.lstat(os.path.join(path, f))
 			out[f] = (st[stat.ST_MODE], st[stat.ST_MTIME])
 		return out
 	
