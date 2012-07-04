@@ -92,7 +92,7 @@ class TreeThumbnailer(object):
 				else:
 					# target path exists
 					if not stat.S_ISDIR(titem_mode):
-						remove_item(titem_mode, titem_path)
+						self.remove_item(titem_mode, titem_path)
 						os.mkdir(titem_path)
 					self.resolve_trees(sitem_path, titem_path) # resolve recursively
 				
@@ -107,7 +107,7 @@ class TreeThumbnailer(object):
 					os.symlink(sitem_linksto, titem_path)
 				else:
 					if not stat.S_ISLNK(titem_mode):
-						remove_item(titem_mode, titem_path)
+						self.remove_item(titem_mode, titem_path)
 						os.symlink(sitem_linksto, titem_path)
 					elif os.readlink(titem_path) != sitem_linksto:
 						print "updating symlink %s" % titem_path
@@ -120,7 +120,7 @@ class TreeThumbnailer(object):
 					self.refresh_file(sitem_path, titem_path)
 				else:
 					if not stat.S_ISREG(titem_mode):
-						remove_item(titem_mode, titem_path)
+						self.remove_item(titem_mode, titem_path)
 						self.refresh_file(sitem_path, titem_path)
 					elif sitem_time >= titem_time:
 						os.unlink(titem_path)
