@@ -25,7 +25,7 @@ class TreeThumbnailer(object):
 		""" Refresh file thumbnail """
 		image_exts = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
 		copy_exts = ('', '.mov', '.avi', '.txt', '.mp4', '.pdf')
-                ignored_exts = ('.xcf', '.cr2', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd')
+                ignored_exts = ('.xcf', '.cr2', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf')
 		ignored_files = ('Thumbs.db', '.DS_Store')
 		
 		ext = os.path.splitext(source_file)[1].lower()
