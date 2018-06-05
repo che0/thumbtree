@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import stat
@@ -27,7 +27,7 @@ class TreeThumbnailer:
 
     def close(self):
         if self.resize_pp3_dir:
-            shutil.rmtree(self.resize_pp3_dir)
+            self.resize_pp3_dir.cleanup()
 
     @staticmethod
     def list_dir(path):
@@ -75,7 +75,7 @@ class TreeThumbnailer:
 
     def get_resize_pp3(self):
         if self.resize_pp3_dir:
-            return os.path.join(self.resize_pp3_dir, 'resize.pp3')
+            return os.path.join(self.resize_pp3_dir.name, 'resize.pp3')
 
         self.resize_pp3_dir = tempfile.TemporaryDirectory()
         resize_pp3 = """
@@ -90,8 +90,8 @@ Method=Lanczos
 DataSpecified=3
 Width={0[0]}
 Height={0[1]}
-""".format(max_dimensions)
-        pp3_path = os.path.join(self.resize_pp3_dir, 'resize.pp3')
+""".format(self.max_dimensions)
+        pp3_path = os.path.join(self.resize_pp3_dir.name, 'resize.pp3')
         with open(pp3_path, 'w') as pp3_file:
             pp3_file.write(resize_pp3)
 
