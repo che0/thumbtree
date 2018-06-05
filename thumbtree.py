@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
-import os, stat, sys, subprocess, shutil
+import os
+import stat
+import sys
+import subprocess
+import shutil
+import logging
 
 class TreeThumbnailer(object):
     """ Class for creating thumbnail tree from a photo tree. """
@@ -32,17 +37,17 @@ class TreeThumbnailer(object):
         if ext in image_exts:
             self.make_thumbnail(source_file, target_file)
         elif ext in ignored_exts or os.path.basename(source_file) in ignored_files:
-            print 'skipping %s' % target_file
+            logging.info('skipping {}'.format(target_file))
             subprocess.check_call(['touch', target_file])
         elif ext in copy_exts:
-            print 'copying %s' % target_file
+            logging.info('copying {}'.format(target_file))
             shutil.copyfile(source_file, target_file)
         else:
             raise Exception('unknown filetype: %s %s' % (ext, source_file))
 
     def make_thumbnail(self, source_file, target_file):
         """ Refresh thumbnail image. Takes paths as argument. Source exists, target does not. """
-        print 'thumbnailing %s' % target_file
+        logging.info('thumbnailing {}'.format(target_file))
         call_argv = [
             'convert',
             '-size', '%sx%s' % self.max_dimensions, # set max dimensions for reading
@@ -56,16 +61,16 @@ class TreeThumbnailer(object):
     def remove_item(self, target_mode, target_path):
         """ Remove item from target tree. """
         if stat.S_ISDIR(target_mode):
-            print "replacing directory: %s" % target_path
+            logging.info("replacing directory: {}".format(target_path))
             shutil.rmtree(target_path)
             return
 
         if stat.S_ISLNK(target_mode):
-            print "replacing symlink: %s" % target_path
+            logging.info("replacing symlink: {}".format(target_path))
         elif stat.S_ISREG(target_mode):
-            print "replacing file: %s" % target_path
+            logging.info("replacing file: {}".format(target_path))
         else:
-            print "replacing item: %s" % target_path
+            logging.info("replacing item: {}".format(target_path))
         os.unlink(target_path)
 
     def resolve_trees(self, source_path, target_path):
@@ -86,7 +91,7 @@ class TreeThumbnailer(object):
                 # source is directory
                 if titem == None:
                     # target does not exist, create and resolve
-                    print "new directory: %s" % sitem_path
+                    logging.info("new directory: {}".format(sitem_path))
                     os.mkdir(titem_path)
                     self.resolve_trees(sitem_path, titem_path) # resolve recursively
                 else:
@@ -100,17 +105,17 @@ class TreeThumbnailer(object):
                 # source is a symbolic link
                 sitem_linksto = os.readlink(sitem_path)
                 if os.path.isabs(sitem_linksto):
-                    print "symlink %s link to absolute path: %s" % (sitem_path, sitem_linksto)
+                    logging.info("symlink {0} link to absolute path: {1}".format(sitem_path, sitem_linksto))
 
                 if titem == None:
-                    print "creating symlink: %s" % titem_path
+                    logging.info("creating symlink: {}".format(titem_path))
                     os.symlink(sitem_linksto, titem_path)
                 else:
                     if not stat.S_ISLNK(titem_mode):
                         self.remove_item(titem_mode, titem_path)
                         os.symlink(sitem_linksto, titem_path)
                     elif os.readlink(titem_path) != sitem_linksto:
-                        print "updating symlink %s" % titem_path
+                        logging.info("updating symlink {}".format(titem_path))
                         os.unlink(titem_path)
                         os.symlink(sitem_linksto, titem_path)
 
@@ -128,7 +133,7 @@ class TreeThumbnailer(object):
 
             else:
                 # weird stuff in our tree
-                print "weird item in source tree: %s" % sitem_path
+                logging.info("weird item in source tree: {}".format(sitem_path))
         # end of what's in source
 
         # go through remaining stuff in destination
@@ -136,28 +141,29 @@ class TreeThumbnailer(object):
             titem_mode, _ = target[item_name]
             titem_path = os.path.join(target_path, item_name)
             if stat.S_ISDIR(titem_mode):
-                print "clearing removed directory: %s" % titem_path
+                logging.info("clearing removed directory: {}".format(titem_path))
                 shutil.rmtree(titem_path)
             else:
-                print "clearing removed item: %s" % titem_path
+                logging.info("clearing removed item: {}".format(titem_path))
                 os.unlink(titem_path)
 
     def thumbnail_tree(self, source_path, dest_path):
         """ Make dest_path thumbnail tree of source_path. """
         if not stat.S_ISDIR(os.stat(source_path)[stat.ST_MODE]):
-            raise Exception('%s is not a directory' % source_path)
+            raise Exception('{} is not a directory'.format(source_path))
 
         if not os.path.exists(dest_path):
-            print 'creating destination directory: %s' % dest_path
+            logging.info('creating destination directory: {}'.format(dest_path))
             os.mkdir(dest_path)
         else:
             if not stat.S_ISDIR(os.stat(dest_path)[stat.ST_MODE]):
-                raise Exception('%s is not a directory' % dest_path)
+                raise Exception('{} is not a directory'.format(dest_path))
 
         self.resolve_trees(source_path, dest_path)
 
 def main():
-    print "%s -> %s" % (sys.argv[1], sys.argv[2])
+    logging.getLogger().setLevel(logging.INFO)
+    logging.info("{0} -> {1}".format(sys.argv[1], sys.argv[2]))
 
     max_dim = (1920, 1200)
     quality = 88
