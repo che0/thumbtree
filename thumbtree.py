@@ -6,13 +6,27 @@ import sys
 import subprocess
 import shutil
 import logging
+import tempfile
 
-class TreeThumbnailer(object):
+
+IMAGE_EXTS = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
+RAW_EXTS = ('.cr2', '.dng')
+COPY_EXTS = ('', '.mov', '.avi', '.txt', '.mp4', '.pdf')
+IGNORED_EXTS = ('.xcf', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf')
+IGNORED_FILES = ('Thumbs.db', '.DS_Store')
+
+
+class TreeThumbnailer:
     """ Class for creating thumbnail tree from a photo tree. """
 
     def __init__(self, max_dimensions, quality):
         self.max_dimensions = max_dimensions
         self.quality = quality
+        self.resize_pp3_dir = None
+
+    def close(self):
+        if self.resize_pp3_dir:
+            shutil.rmtree(self.resize_pp3_dir)
 
     @staticmethod
     def list_dir(path):
@@ -26,37 +40,76 @@ class TreeThumbnailer(object):
             out[f] = (st[stat.ST_MODE], st[stat.ST_MTIME])
         return out
 
+    def raw_target(self, source_file):
+        """ Returns raw thumbnail name or None if file is not raw """
+        basename, ext = os.path.splitext(source_file)
+        if ext.lower() in RAW_EXTS:
+            return '{0}.jpg'.format(basename)
+        else:
+            return None
+
     def refresh_file(self, source_file, target_file):
         """ Refresh file thumbnail """
-        image_exts = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
-        copy_exts = ('', '.mov', '.avi', '.txt', '.mp4', '.pdf')
-        ignored_exts = ('.xcf', '.cr2', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf')
-        ignored_files = ('Thumbs.db', '.DS_Store')
 
         ext = os.path.splitext(source_file)[1].lower()
-        if ext in image_exts:
+        if ext in IMAGE_EXTS:
             self.make_thumbnail(source_file, target_file)
-        elif ext in ignored_exts or os.path.basename(source_file) in ignored_files:
+        elif ext in RAW_EXTS:
+            self.make_raw_thumbnail(source_file, target_file)
+        elif ext in IGNORED_EXTS or os.path.basename(source_file) in IGNORED_FILES:
             logging.info('skipping {}'.format(target_file))
             subprocess.check_call(['touch', target_file])
-        elif ext in copy_exts:
+        elif ext in COPY_EXTS:
             logging.info('copying {}'.format(target_file))
             shutil.copyfile(source_file, target_file)
         else:
             raise Exception('unknown filetype: %s %s' % (ext, source_file))
 
+    def get_resize_pp3(self):
+        if self.resize_pp3_dir:
+            return os.path.join(self.resize_pp3_dir, 'resize.pp3')
+
+        self.resize_pp3_dir = tempfile.TemporaryDirectory()
+        resize_pp3 = """
+[Version]
+AppVersion=5.2
+Version=326
+
+[Resize]
+Enabled=true
+AppliesTo=Cropped area
+Method=Lanczos
+DataSpecified=3
+Width={0[0]}
+Height={0[1]}
+""".format(max_dimensions)
+        pp3_path = os.path.join(self.resize_pp3_dir, 'resize.pp3')
+        with open(pp3_path, 'w') as pp3_file:
+            pp3_file.write(resize_pp3)
+
+        return pp3_path
+
+    def make_raw_thumbnail(self, source_file, target_file):
+        logging.info('thumbnailing RAW file {}'.format(source_file))
+        subprocess.check_call([
+            'rawtherapee-cli',
+            '-d', '-s', '-p', self.get_resize_pp3(), # default -> sidecar -> resize
+            '-j{}'.format(self.quality),
+            '-o', target_file,
+            '-c', source_file,
+        ])
+
     def make_thumbnail(self, source_file, target_file):
         """ Refresh thumbnail image. Takes paths as argument. Source exists, target does not. """
         logging.info('thumbnailing {}'.format(target_file))
-        call_argv = [
+        subprocess.check_call([
             'convert',
-            '-size', '%sx%s' % self.max_dimensions, # set max dimensions for reading
+            '-size', '{0[0]}x{0[1]}'.format(self.max_dimensions), # set max dimensions for reading
             source_file,
-            '-resize', '%sx%s>' % self.max_dimensions, # fit to this size
+            '-resize', '{0[0]}x{0[1]}>'.format(self.max_dimensions), # fit to this size
             '-quality', str(self.quality), # output quality
             target_file,
-        ]
-        subprocess.check_call(call_argv)
+        ])
 
     def remove_item(self, target_mode, target_path):
         """ Remove item from target tree. """
@@ -79,23 +132,23 @@ class TreeThumbnailer(object):
         target = self.list_dir(target_path)
 
         # go through source content
+        regular_source_files = {}
         for item_name in source:
             sitem_mode, sitem_time = source[item_name]
             sitem_path = os.path.join(source_path, item_name)
             titem_path = os.path.join(target_path, item_name) # target path
-            titem = target.pop(item_name, None)
-            if titem != None:
-                titem_mode, titem_time = titem
 
             if stat.S_ISDIR(sitem_mode):
                 # source is directory
-                if titem == None:
+                titem = target.pop(item_name, None)
+                if titem is None:
                     # target does not exist, create and resolve
                     logging.info("new directory: {}".format(sitem_path))
                     os.mkdir(titem_path)
                     self.resolve_trees(sitem_path, titem_path) # resolve recursively
                 else:
                     # target path exists
+                    titem_mode, _ = titem
                     if not stat.S_ISDIR(titem_mode):
                         self.remove_item(titem_mode, titem_path)
                         os.mkdir(titem_path)
@@ -107,10 +160,12 @@ class TreeThumbnailer(object):
                 if os.path.isabs(sitem_linksto):
                     logging.info("symlink {0} link to absolute path: {1}".format(sitem_path, sitem_linksto))
 
-                if titem == None:
+                titem = target.pop(item_name, None)
+                if titem is None:
                     logging.info("creating symlink: {}".format(titem_path))
                     os.symlink(sitem_linksto, titem_path)
                 else:
+                    titem_mode, _ = titem
                     if not stat.S_ISLNK(titem_mode):
                         self.remove_item(titem_mode, titem_path)
                         os.symlink(sitem_linksto, titem_path)
@@ -120,21 +175,35 @@ class TreeThumbnailer(object):
                         os.symlink(sitem_linksto, titem_path)
 
             elif stat.S_ISREG(sitem_mode):
-                # source is a regular file
-                if titem == None:
-                    self.refresh_file(sitem_path, titem_path)
-                else:
-                    if not stat.S_ISREG(titem_mode):
-                        self.remove_item(titem_mode, titem_path)
-                        self.refresh_file(sitem_path, titem_path)
-                    elif sitem_time >= titem_time:
-                        os.unlink(titem_path)
-                        self.refresh_file(sitem_path, titem_path)
+                # source is a regular file, process those a bit later
+                regular_source_files[item_name] = source[item_name]
 
             else:
                 # weird stuff in our tree
                 logging.info("weird item in source tree: {}".format(sitem_path))
         # end of what's in source
+
+        # process regular files, sorting out raws and their jpegs
+        for file_name in regular_source_files:
+            raw_target_file = self.raw_target(file_name)
+            if raw_target_file in regular_source_files:
+                continue # skip raws that have their jpeg in source dir
+
+            target_name = raw_target_file or file_name
+            sitem_path = os.path.join(source_path, file_name)
+            titem_path = os.path.join(target_path, target_name) # target path
+
+            titem = target.pop(target_name, None)
+            if titem is None:
+                self.refresh_file(sitem_path, titem_path)
+            else:
+                titem_mode, titem_time = titem
+                if not stat.S_ISREG(titem_mode):
+                    self.remove_item(titem_mode, titem_path)
+                    self.refresh_file(sitem_path, titem_path)
+                elif sitem_time >= titem_time:
+                    os.unlink(titem_path)
+                    self.refresh_file(sitem_path, titem_path)
 
         # go through remaining stuff in destination
         for item_name in target:
@@ -170,6 +239,7 @@ def main():
 
     tt = TreeThumbnailer(max_dim, quality)
     tt.thumbnail_tree(sys.argv[1], sys.argv[2])
+    tt.close()
 
 if __name__ == '__main__':
     main()
