@@ -7,12 +7,13 @@ import subprocess
 import shutil
 import logging
 import tempfile
+import re
 
 
 IMAGE_EXTS = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
 RAW_EXTS = ('.cr2', '.dng')
 COPY_EXTS = ('', '.mov', '.avi', '.txt', '.mp4', '.pdf')
-IGNORED_EXTS = ('.xcf', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf')
+IGNORED_EXTS = ('.xcf', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf', '.pp3')
 IGNORED_FILES = ('Thumbs.db', '.DS_Store')
 
 
@@ -47,6 +48,13 @@ class TreeThumbnailer:
             return '{0}.jpg'.format(basename)
         else:
             return None
+
+    def trashed_in_pp3(self, source_path):
+        pp3 = '{}.pp3'.format(source_path)
+        if os.path.isfile(pp3) and re.search(r'^InTrash=true$', open(pp3).read(), re.MULTILINE):
+            return True
+        else:
+            return False
 
     def refresh_file(self, source_file, target_file):
         """ Refresh file thumbnail """
@@ -189,8 +197,11 @@ Height={0[1]}
             if raw_target_file in regular_source_files:
                 continue # skip raws that have their jpeg in source dir
 
-            target_name = raw_target_file or file_name
             sitem_path = os.path.join(source_path, file_name)
+            if self.trashed_in_pp3(sitem_path):
+                continue
+
+            target_name = raw_target_file or file_name
             titem_path = os.path.join(target_path, target_name) # target path
 
             titem = target.pop(target_name, None)
