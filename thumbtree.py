@@ -12,7 +12,8 @@ import re
 
 IMAGE_EXTS = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
 RAW_EXTS = ('.cr2', '.dng')
-COPY_EXTS = ('', '.mov', '.avi', '.txt', '.mp4', '.pdf')
+VIDEO_EXTS = ('.mov', '.avi', '.mp4')
+COPY_EXTS = ('', '.txt', '.pdf')
 IGNORED_EXTS = ('.xcf', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf', '.pp3')
 IGNORED_FILES = ('Thumbs.db', '.DS_Store')
 
@@ -62,6 +63,8 @@ class TreeThumbnailer:
         ext = os.path.splitext(source_file)[1].lower()
         if ext in IMAGE_EXTS:
             self.make_thumbnail(source_file, target_file)
+        elif ext in VIDEO_EXTS:
+            self.make_video_thumbnail(source_file, target_file)
         elif ext in RAW_EXTS:
             self.make_raw_thumbnail(source_file, target_file)
         elif ext in IGNORED_EXTS or os.path.basename(source_file) in IGNORED_FILES:
@@ -105,6 +108,18 @@ Height={0[1]}
             '-j{}'.format(self.quality),
             '-o', target_file,
             '-c', source_file,
+        ])
+
+    def make_video_thumbnail(self, source_file, target_file):
+        logging.info('thumbnailing video file %s', source_file)
+        subprocess.check_call([
+            'ffmpeg',
+            '-loglevel', 'error',
+            '-i', source_file,
+            '-c:a', 'aac',
+            '-c:v', 'h264',
+            '-crf', '30',
+            target_file,
         ])
 
     def make_thumbnail(self, source_file, target_file):
