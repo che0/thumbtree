@@ -118,7 +118,7 @@ Height={0[1]}
             '-i', source_file,
             '-c:a', 'aac',
             '-c:v', 'h264',
-            '-crf', '30',
+            '-b:v', '1M',
             target_file,
         ])
 
