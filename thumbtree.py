@@ -57,6 +57,11 @@ class TreeThumbnailer:
         else:
             return False
 
+    def ignored(self, source_file):
+        """ Check whether file should be ignored """
+        ext = os.path.splitext(source_file)[1].lower()
+        return ext in IGNORED_EXTS or os.path.basename(source_file) in IGNORED_FILES
+
     def refresh_file(self, source_file, target_file):
         """ Refresh file thumbnail """
 
@@ -67,9 +72,8 @@ class TreeThumbnailer:
             self.make_video_thumbnail(source_file, target_file)
         elif ext in RAW_EXTS:
             self.make_raw_thumbnail(source_file, target_file)
-        elif ext in IGNORED_EXTS or os.path.basename(source_file) in IGNORED_FILES:
-            logging.info('skipping {}'.format(target_file))
-            subprocess.check_call(['touch', target_file])
+        elif self.ignored(source_file):
+            raise RuntimeError('refreshing ignored file: %s' % source_file)
         elif ext in COPY_EXTS:
             logging.info('copying {}'.format(target_file))
             shutil.copyfile(source_file, target_file)
@@ -211,6 +215,9 @@ Height={0[1]}
             raw_target_file = self.raw_target(file_name)
             if raw_target_file in regular_source_files:
                 continue # skip raws that have their jpeg in source dir
+
+            if self.ignored(file_name):
+                continue # skip ignored files
 
             sitem_path = os.path.join(source_path, file_name)
             if self.trashed_in_pp3(sitem_path):
