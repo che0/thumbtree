@@ -14,7 +14,7 @@ IMAGE_EXTS = ('.jpg', '.jpeg', '.bmp', '.png', '.gif')
 RAW_EXTS = ('.cr2', '.dng', '.nef', '.arw')
 VIDEO_EXTS = ('.mov', '.avi', '.mp4', '.mkv')
 COPY_EXTS = ('', '.txt', '.pdf')
-IGNORED_EXTS = ('.xcf', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf', '.pp3')
+IGNORED_EXTS = ('.xcf', '.zip', '.bz2', '.xcf', '.pto', '.mk', '.exr', '.tif', '.psd', '.xml', '.mcf', '.pp3', '.safetensors')
 IGNORED_FILES = ('Thumbs.db', '.DS_Store')
 
 
