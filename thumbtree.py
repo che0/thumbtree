@@ -267,7 +267,7 @@ def main():
     logging.getLogger().setLevel(logging.INFO)
     logging.info("{0} -> {1}".format(sys.argv[1], sys.argv[2]))
 
-    max_dim = (1920, 1200)
+    max_dim = (2560, 1440)
     quality = 88
 
     tt = TreeThumbnailer(max_dim, quality)
